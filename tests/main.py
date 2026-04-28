@@ -134,6 +134,9 @@ def get_argparser():
     parser.add_argument('--dual_dist', type=str, default='one', choices=['l2', 's2_from_s', 'one'])
     parser.add_argument('--dual_lr', type=float, default=None)
 
+    parser.add_argument('--max_grad_norm', type=float, default=None,
+                        help='Max norm for gradient clipping. None disables clipping.')
+
     return parser
 
 
@@ -518,6 +521,7 @@ def run(ctxt=None):
         discount=args.sac_discount,
         discrete=args.discrete,
         unit_length=args.unit_length,
+        max_grad_norm=args.max_grad_norm,
     )
 
     skill_common_args = dict(

@@ -53,6 +53,7 @@ class IOD(RLAlgorithm):
             trans_optimization_epochs=None,
             discrete=False,
             unit_length=False,
+            max_grad_norm=None,
     ):
         self.env_name = env_name
         self.algo = algo
@@ -114,6 +115,7 @@ class IOD(RLAlgorithm):
 
         self.discrete = discrete
         self.unit_length = unit_length
+        self.max_grad_norm = max_grad_norm
 
         self.traj_encoder.eval()
 
@@ -308,6 +310,11 @@ class IOD(RLAlgorithm):
     def _gradient_descent(self, loss, optimizer_keys):
         self._optimizer.zero_grad(keys=optimizer_keys)
         loss.backward()
+        if self.max_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(
+                self._optimizer.target_parameters(keys=optimizer_keys),
+                self.max_grad_norm,
+            )
         self._optimizer.step(keys=optimizer_keys)
 
     def _get_mini_tensors(self, epoch_data):
