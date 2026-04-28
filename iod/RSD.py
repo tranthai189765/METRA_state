@@ -17,7 +17,6 @@ from iod.viz_utils import PlotMazeTraj
 
 import torch.optim as optim
 import torch.nn.functional as F
-from tqdm import trange, tqdm
 from iod.GradCLipper import GradClipper
 import matplotlib.pyplot as plt
 import torch.distributions as dist
@@ -314,7 +313,7 @@ class RSD(IOD):
                     self.copy_params(self.ResetSZPolicy, self.SampleZPolicy)
                     self.SampleZPolicy_optim = optim.Adam(self.SampleZPolicy.parameters(), lr=3e-2)
                     # training loop
-                    for t in trange(100):
+                    for t in range(100):
                         # Reset the SZN:
                         z_values = self.SampleZPolicy(self.input_token).mean
                         probabilities = F.softmax(z_values, dim=-1)
@@ -397,7 +396,7 @@ class RSD(IOD):
                         self.DistWindow = PopDistDeque(self.SZN_window_size, pop_min=True)
                     window_dist = self.UpdateGMM(self.DistWindow, device=self.device)
 
-                    for t in trange(100):
+                    for t in range(100):
                         # Reset the SZN:
                         dist_z = self.SampleZPolicy(self.input_token)
                         z = dist_z.rsample()
@@ -558,7 +557,7 @@ class RSD(IOD):
         if self.replay_buffer is not None and self.replay_buffer.n_transitions_stored < self.min_buffer_size:
             return {}
         self.buffer_ready = 1
-        for _ in trange(self._trans_optimization_epochs):
+        for _ in range(self._trans_optimization_epochs):
             tensors = {}
             if self.replay_buffer is None:
                 v = self._get_mini_tensors(epoch_data)
