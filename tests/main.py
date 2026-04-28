@@ -65,7 +65,8 @@ def get_argparser():
     parser.add_argument('--encoder', type=int, default=0)
 
     parser.add_argument('--env', type=str, default='maze', choices=[
-        'maze', 'half_cheetah', 'ant', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid', 'kitchen',
+        'maze', 'half_cheetah', 'ant', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid',
+        'dmc_humanoid_state', 'dmc_quadruped_state', 'kitchen',
     ])
     parser.add_argument('--frame_stack', type=int, default=None)
 
@@ -226,18 +227,23 @@ def make_env(args, max_path_length):
     elif args.env.startswith('dmc'):
         from envs.custom_dmc_tasks import dmc
         from envs.custom_dmc_tasks.pixel_wrappers import RenderWrapper
-        assert args.encoder  # Only support pixel-based environments
-        if args.env == 'dmc_cheetah':
-            env = dmc.make('cheetah_run_forward_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
-            env = RenderWrapper(env)
-        elif args.env == 'dmc_quadruped':
-            env = dmc.make('quadruped_run_forward_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
-            env = RenderWrapper(env)
-        elif args.env == 'dmc_humanoid':
-            env = dmc.make('humanoid_run_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
-            env = RenderWrapper(env)
+        if args.env == 'dmc_humanoid_state':
+            env = dmc.make('humanoid_run', obs_type='states', frame_stack=1, action_repeat=1, seed=args.seed)
+        elif args.env == 'dmc_quadruped_state':
+            env = dmc.make('quadruped_run_forward', obs_type='states', frame_stack=1, action_repeat=1, seed=args.seed)
         else:
-            raise NotImplementedError
+            assert args.encoder  # Only support pixel-based environments
+            if args.env == 'dmc_cheetah':
+                env = dmc.make('cheetah_run_forward_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
+                env = RenderWrapper(env)
+            elif args.env == 'dmc_quadruped':
+                env = dmc.make('quadruped_run_forward_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
+                env = RenderWrapper(env)
+            elif args.env == 'dmc_humanoid':
+                env = dmc.make('humanoid_run_color', obs_type='states', frame_stack=1, action_repeat=2, seed=args.seed)
+                env = RenderWrapper(env)
+            else:
+                raise NotImplementedError
     elif args.env == 'kitchen':
         sys.path.append('lexa')
         from envs.lexa.mykitchen import MyKitchenEnv
