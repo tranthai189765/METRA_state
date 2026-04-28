@@ -47,6 +47,8 @@ from garagei.torch.optimizers.optimizer_group_wrapper import OptimizerGroupWrapp
 from garagei.torch.utils import xavier_normal_ex
 from iod.metra import METRA
 from iod.dads import DADS
+from iod.RSD import RSD
+from garagei.replay_buffer.path_buffer_tensor import PathBufferTensor
 from iod.utils import get_normalizer_preset
 
 
@@ -102,7 +104,7 @@ def get_argparser():
 
     parser.add_argument('--alpha', type=float, default=0.01)
 
-    parser.add_argument('--algo', type=str, default='metra', choices=['metra', 'dads'])
+    parser.add_argument('--algo', type=str, default='metra', choices=['metra', 'dads', 'rsd'])
 
     parser.add_argument('--sac_tau', type=float, default=5e-3)
     parser.add_argument('--sac_lr_q', type=float, default=None)
@@ -136,6 +138,24 @@ def get_argparser():
 
     parser.add_argument('--max_grad_norm', type=float, default=None,
                         help='Max norm for gradient clipping. None disables clipping.')
+
+    # RSD-specific arguments
+    parser.add_argument('--phi_type', type=str, default='baseline',
+                        choices=['baseline', 'Projection'])
+    parser.add_argument('--policy_type', type=str, default='baseline')
+    parser.add_argument('--explore_type', type=str, default='baseline',
+                        choices=['baseline', 'SZN', 'uniform'])
+    parser.add_argument('--sample_type', type=str, default=None)
+    parser.add_argument('--num_her', type=int, default=0)
+    parser.add_argument('--SZN_w2', type=float, default=3.)
+    parser.add_argument('--SZN_w3', type=float, default=3.)
+    parser.add_argument('--SZN_window_size', type=int, default=10)
+    parser.add_argument('--SZN_repeat_time', type=int, default=5)
+    parser.add_argument('--SZN_std_min', type=float, default=1e-1)
+    parser.add_argument('--SZN_std_max', type=float, default=5e-1)
+    parser.add_argument('--Repr_max_step', type=float, default=5.)
+    parser.add_argument('--z_unit', type=int, default=0, choices=[0, 1])
+    parser.add_argument('--save_pt_step', type=int, default=500)
 
     return parser
 
@@ -382,6 +402,23 @@ def run(ctxt=None):
             te_encoder = None
         traj_encoder = with_encoder(traj_encoder, encoder=te_encoder)
 
+    # SampleZPolicy for RSD: takes (traj_batch_size x traj_batch_size) token, outputs dim_option skills
+    if args.algo == 'rsd':
+        szn_module_cls, szn_module_kwargs = get_gaussian_module_construction(
+            args,
+            hidden_sizes=master_dims,
+            hidden_nonlinearity=nonlinearity or torch.relu,
+            w_init=torch.nn.init.xavier_uniform_,
+            input_dim=args.traj_batch_size,
+            output_dim=args.dim_option,
+            init_std=3e-1,
+            min_std=args.SZN_std_min,
+            max_std=args.SZN_std_max,
+        )
+        sample_z_policy = szn_module_cls(**szn_module_kwargs)
+    else:
+        sample_z_policy = None
+
     module_cls, module_kwargs = get_gaussian_module_construction(
         args,
         hidden_sizes=master_dims,
@@ -452,9 +489,12 @@ def run(ctxt=None):
             ]),
         })
 
-    replay_buffer = PathBufferEx(capacity_in_transitions=int(args.sac_max_buffer_size), pixel_shape=pixel_shape)
+    if args.algo == 'rsd':
+        replay_buffer = PathBufferTensor(capacity_in_transitions=int(args.sac_max_buffer_size), pixel_shape=pixel_shape)
+    else:
+        replay_buffer = PathBufferEx(capacity_in_transitions=int(args.sac_max_buffer_size), pixel_shape=pixel_shape)
 
-    if args.algo in ['metra', 'dads']:
+    if args.algo in ['metra', 'dads', 'rsd']:
         qf1 = ContinuousMLPQFunctionEx(
             obs_dim=policy_q_input_dim,
             action_dim=action_dim,
@@ -522,6 +562,9 @@ def run(ctxt=None):
         discrete=args.discrete,
         unit_length=args.unit_length,
         max_grad_norm=args.max_grad_norm,
+        sample_type=args.sample_type,
+        num_her=args.num_her,
+        save_pt_step=args.save_pt_step,
     )
 
     skill_common_args = dict(
@@ -555,6 +598,24 @@ def run(ctxt=None):
         algo = DADS(
             **algo_kwargs,
             **skill_common_args,
+        )
+    elif args.algo == 'rsd':
+        algo_kwargs['num_random_trajectories'] = args.traj_batch_size
+        algo_kwargs['name'] = 'RSD'
+        algo = RSD(
+            **algo_kwargs,
+            **skill_common_args,
+            init_obs=example_ob,
+            phi_type=args.phi_type,
+            policy_type=args.policy_type,
+            explore_type=args.explore_type,
+            SampleZPolicy=sample_z_policy,
+            SZN_w2=args.SZN_w2,
+            SZN_w3=args.SZN_w3,
+            SZN_window_size=args.SZN_window_size,
+            SZN_repeat_time=args.SZN_repeat_time,
+            Repr_max_step=args.Repr_max_step,
+            z_unit=args.z_unit,
         )
     else:
         raise NotImplementedError

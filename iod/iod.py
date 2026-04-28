@@ -54,6 +54,10 @@ class IOD(RLAlgorithm):
             discrete=False,
             unit_length=False,
             max_grad_norm=None,
+            sample_type=None,
+            num_her=0,
+            _trans_online_sample_epochs=1,
+            save_pt_step=500,
     ):
         self.env_name = env_name
         self.algo = algo
@@ -116,6 +120,10 @@ class IOD(RLAlgorithm):
         self.discrete = discrete
         self.unit_length = unit_length
         self.max_grad_norm = max_grad_norm
+        self.sample_type = sample_type
+        self.num_her = num_her
+        self._trans_online_sample_epochs = _trans_online_sample_epochs
+        self.save_pt_step = save_pt_step
 
         self.traj_encoder.eval()
 
@@ -203,7 +211,7 @@ class IOD(RLAlgorithm):
                 self.traj_encoder.eval()
 
                 if self.n_epochs_per_eval != 0 and runner.step_itr % self.n_epochs_per_eval == 0:
-                    self._evaluate_policy(runner)
+                    self._evaluate_policy(runner, env_name=self.env_name)
 
                 for p in self.policy.values():
                     p.train()
@@ -221,6 +229,9 @@ class IOD(RLAlgorithm):
                             'TimeSampling': time_sampling[0],
                         },
                     )
+
+                if runner.step_itr % self.save_pt_step == 0:
+                    self._save_pt(runner.step_itr)
 
                 runner.step_itr += 1
 
@@ -283,8 +294,14 @@ class IOD(RLAlgorithm):
             data['rewards'].append(path['rewards'])
             data['dones'].append(path['dones'])
             data['returns'].append(tensor_utils.discount_cumsum(path['rewards'], self.discount))
-            data['ori_obs'].append(path['env_infos']['ori_obs'])
-            data['next_ori_obs'].append(path['env_infos']['next_ori_obs'])
+            if 'ori_obs' in path['env_infos']:
+                data['ori_obs'].append(path['env_infos']['ori_obs'])
+            else:
+                data['ori_obs'].append(path['observations'])
+            if 'next_ori_obs' in path['env_infos']:
+                data['next_ori_obs'].append(path['env_infos']['next_ori_obs'])
+            else:
+                data['next_ori_obs'].append(path['next_observations'])
             if 'pre_tanh_value' in path['agent_infos']:
                 data['pre_tanh_values'].append(path['agent_infos']['pre_tanh_value'])
             if 'log_prob' in path['agent_infos']:
@@ -292,30 +309,50 @@ class IOD(RLAlgorithm):
             if 'option' in path['agent_infos']:
                 data['options'].append(path['agent_infos']['option'])
                 data['next_options'].append(np.concatenate([path['agent_infos']['option'][1:], path['agent_infos']['option'][-1:]], axis=0))
+            traj_len = len(path['observations'])
+            data['s_0'].append(np.tile(path['observations'][0], (traj_len, 1)))
+            if 'psi_g' in path['agent_infos']:
+                data['psi_g'].append(path['agent_infos']['psi_g'])
 
         return data
 
-    def _get_policy_param_values(self, key):
-        param_dict = self.policy[key].get_param_values()
-        for k in param_dict.keys():
-            if self.sample_cpu:
-                param_dict[k] = param_dict[k].detach().cpu()
-            else:
-                param_dict[k] = param_dict[k].detach()
-        return param_dict
+    def _generate_option_extras(self, options, psi_g=None):
+        extras = [{'option': option} for option in options]
+        if psi_g is not None:
+            for i in range(len(psi_g)):
+                extras[i]['psi_g'] = psi_g[i]
+        return extras
 
-    def _generate_option_extras(self, options):
-        return [{'option': option} for option in options]
-
-    def _gradient_descent(self, loss, optimizer_keys):
+    def _gradient_descent(self, loss, optimizer_keys, params=None):
         self._optimizer.zero_grad(keys=optimizer_keys)
         loss.backward()
-        if self.max_grad_norm is not None:
+        if params is not None and self.max_grad_norm is not None:
+            torch.nn.utils.clip_grad_norm_(params, self.max_grad_norm)
+        elif self.max_grad_norm is not None:
             torch.nn.utils.clip_grad_norm_(
                 self._optimizer.target_parameters(keys=optimizer_keys),
                 self.max_grad_norm,
             )
         self._optimizer.step(keys=optimizer_keys)
+
+    def _save_pt(self, epoch):
+        pass
+
+    def _get_policy_param_values(self, key):
+        param_dict = self.policy[key].get_param_values()
+        result = {}
+        for k, v in param_dict.items():
+            if isinstance(v, dict):
+                if self.sample_cpu:
+                    result[k] = {pk: pv.detach().cpu() for pk, pv in v.items()}
+                else:
+                    result[k] = {pk: pv.detach() for pk, pv in v.items()}
+            else:
+                if self.sample_cpu:
+                    result[k] = v.detach().cpu()
+                else:
+                    result[k] = v.detach()
+        return result
 
     def _get_mini_tensors(self, epoch_data):
         num_transitions = len(epoch_data['actions'])

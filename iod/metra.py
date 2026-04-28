@@ -331,7 +331,7 @@ class METRA(IOD):
             self, tensors, v,
         )
 
-    def _evaluate_policy(self, runner):
+    def _evaluate_policy(self, runner, env_name=None):
         if self.discrete:
             eye_options = np.eye(self.dim_option)
             random_options = []
