@@ -876,12 +876,14 @@ class RSD(IOD):
         else:
             self.eval_metra(runner)
 
-    def _save_pt(self, epoch):
-        if wandb.run is not None:
+    def _save_pt(self, epoch, runner=None):
+        import os
+        if runner is not None:
+            path = runner._snapshotter._snapshot_dir
+        elif wandb.run is not None:
             path = wandb.run.dir
         else:
             path = '.'
-        file_name = path + 'option_policy-' + str(epoch) + '.pt'
         torch.save({
             'discrete': self.discrete,
             'dim_option': self.dim_option,
@@ -890,21 +892,19 @@ class RSD(IOD):
             'alpha': self.log_alpha,
             'policy': self.option_policy,
             's0': self.s0,
-        }, file_name)
-        file_name = path + 'traj_encoder-' + str(epoch) + '.pt'
+        }, os.path.join(path, f'option_policy-{epoch}.pt'))
         torch.save({
             'discrete': self.discrete,
             'dim_option': self.dim_option,
             'traj_encoder': self.traj_encoder,
-        }, file_name)
-        file_name = path + 'SampleZPolicy-' + str(epoch) + '.pt'
+        }, os.path.join(path, f'traj_encoder-{epoch}.pt'))
         torch.save({
             'discrete': self.discrete,
             'dim_option': self.dim_option,
             'input_token': self.input_token,
             'goal_sample_network': self.SampleZPolicy,
             'window': self.DistWindow,
-        }, file_name)
+        }, os.path.join(path, f'SampleZPolicy-{epoch}.pt'))
 
     def eval_kitchen_metra(self, runner):
         random_options = np.eye(self.dim_option)

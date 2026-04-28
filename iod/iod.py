@@ -231,7 +231,7 @@ class IOD(RLAlgorithm):
                     )
 
                 if runner.step_itr % self.save_pt_step == 0:
-                    self._save_pt(runner.step_itr)
+                    self._save_pt(runner.step_itr, runner)
 
                 runner.step_itr += 1
 
@@ -335,7 +335,7 @@ class IOD(RLAlgorithm):
             )
         self._optimizer.step(keys=optimizer_keys)
 
-    def _save_pt(self, epoch):
+    def _save_pt(self, epoch, runner=None):
         pass
 
     def _get_policy_param_values(self, key):
