@@ -154,7 +154,7 @@ class DMCGymWrapper(core.Env):
         if render:
             extra['render'] = self.render(mode='rgb_array', width=64, height=64).transpose(2, 0, 1)
 
-        if self._domain in ['cheetah']:
+        if self._domain in ['cheetah', 'hopper']:
             extra['coordinates'] = np.array([xyz_before[0], 0.])
             extra['next_coordinates'] = np.array([xyz_after[0], 0.])
         elif self._domain in ['quadruped', 'humanoid']:
@@ -193,7 +193,7 @@ class DMCGymWrapper(core.Env):
         )
 
     def plot_trajectory(self, trajectory, color, ax):
-        if self._domain in ['cheetah']:
+        if self._domain in ['cheetah', 'hopper']:
             trajectory = trajectory.copy()
             # https://stackoverflow.com/a/20474765/2182622
             from matplotlib.collections import LineCollection
@@ -238,7 +238,7 @@ class DMCGymWrapper(core.Env):
                 trajectory['env_infos']['coordinates'],
                 [trajectory['env_infos']['next_coordinates'][-1]]
             ]))
-        if self._domain in ['cheetah']:
+        if self._domain in ['cheetah', 'hopper']:
             for i, traj in enumerate(coordinates_trajectories):
                 traj[:, 1] = (i - len(coordinates_trajectories) / 2) / 1.25
         return coordinates_trajectories
