@@ -68,7 +68,10 @@ def get_argparser():
 
     parser.add_argument('--env', type=str, default='maze', choices=[
         'maze', 'half_cheetah', 'ant', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid',
-        'dmc_humanoid_state', 'dmc_quadruped_state', 'dmc_hopper_state', 'dmc_cheetah_state', 'kitchen',
+        'dmc_humanoid_state', 'dmc_quadruped_state', 'dmc_hopper_state', 'dmc_cheetah_state',
+        'antmaze_umaze', 'antmaze_medium_play', 'antmaze_medium_diverse',
+        'antmaze_large_play', 'antmaze_large_diverse',
+        'kitchen',
     ])
     parser.add_argument('--frame_stack', type=int, default=None)
 
@@ -273,6 +276,9 @@ def make_env(args, max_path_length):
                 env = RenderWrapper(env)
             else:
                 raise NotImplementedError
+    elif args.env.startswith('antmaze'):
+        from envs.antmaze_env import AntMazeEnv
+        env = AntMazeEnv(args.env, seed=args.seed)
     elif args.env == 'kitchen':
         sys.path.append('lexa')
         from envs.lexa.mykitchen import MyKitchenEnv

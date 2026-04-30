@@ -52,6 +52,18 @@ python tests/main.py --run_group Debug --env dmc_humanoid_state --max_path_lengt
 # METRA on pixel-based Kitchen (24 skills)
 python tests/main.py --run_group Debug --env kitchen --max_path_length 50 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --num_video_repeats 1 --frame_stack 3 --sac_max_buffer_size 100000 --algo metra --sac_lr_a -1 --trans_optimization_epochs 100 --n_epochs_per_log 25 --n_epochs_per_eval 250 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 1 --dim_option 24 --encoder 1 --sample_cpu 0
 
+# METRA on AntMaze-UMaze (2-D skills) — obs_type=states, action_repeat=1, matches TIME/DUSDi default
+python tests/main.py --run_group Debug --env antmaze_umaze --max_path_length 700 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --sac_max_buffer_size 1000000 --algo metra --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
+
+# RSD on AntMaze-UMaze (2-D skills) — obs_type=states, action_repeat=1, matches TIME/DUSDi default
+python tests/main.py --run_group Debug --env antmaze_umaze --max_path_length 700 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --sac_max_buffer_size 1000000 --algo rsd --explore_type SZN --phi_type baseline --policy_type baseline --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
+
+# METRA on AntMaze-Medium-Play (2-D skills)
+python tests/main.py --run_group Debug --env antmaze_medium_play --max_path_length 1000 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --sac_max_buffer_size 1000000 --algo metra --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
+
+# METRA on AntMaze-Large-Play (2-D skills)
+python tests/main.py --run_group Debug --env antmaze_large_play --max_path_length 1000 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --sac_max_buffer_size 1000000 --algo metra --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
+
 # METRA on state-based Cheetah-run-forward dm_control (2-D skills) — env config matches TIME pretrain default
 python tests/main.py --run_group Debug --env dmc_cheetah_state --max_path_length 1000 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --video_skip_frames 2 --sac_max_buffer_size 300000 --eval_plot_axis -15 15 -15 15 --algo metra --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
 
@@ -79,3 +91,24 @@ The `dmc_hopper_state` environment wraps the standard `dm_control` suite `hopper
 | Episode length | 1000 steps (20 s / 0.02 s per step) |
 | `dim_option` | 2 |
 | `normalizer_type` | off |
+
+## AntMaze Environment Details
+
+The `antmaze_*` environments wrap `gymnasium-robotics` AntMaze_*-v5 with observation layout matching TIME and DUSDi:
+
+| Parameter | Value |
+|---|---|
+| Library | `gymnasium-robotics` (`AntMaze_*-v5`) |
+| `obs_type` | `states` only |
+| Observation | `observation(27) + achieved_goal(2) + desired_goal(2)` = 31 dims |
+| `action_repeat` | 1 |
+| `dim_option` | 2 |
+| `normalizer_type` | off |
+| `max_path_length` | 700 (umaze) / 1000 (medium, large) |
+
+**Install prerequisite:**
+```bash
+pip install gymnasium-robotics
+```
+
+**Supported variants:** `antmaze_umaze`, `antmaze_medium_play`, `antmaze_medium_diverse`, `antmaze_large_play`, `antmaze_large_diverse`
