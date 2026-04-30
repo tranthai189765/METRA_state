@@ -67,7 +67,7 @@ def get_argparser():
     parser.add_argument('--encoder', type=int, default=0)
 
     parser.add_argument('--env', type=str, default='maze', choices=[
-        'maze', 'half_cheetah', 'ant', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid',
+        'maze', 'half_cheetah', 'ant', 'ant_v5', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid',
         'dmc_humanoid_state', 'dmc_quadruped_state', 'dmc_hopper_state', 'dmc_cheetah_state',
         'antmaze_umaze', 'antmaze_medium_play', 'antmaze_medium_diverse',
         'antmaze_large_play', 'antmaze_large_diverse',
@@ -250,6 +250,9 @@ def make_env(args, max_path_length):
     elif args.env == 'ant':
         from envs.mujoco.ant_env import AntEnv
         env = AntEnv(render_hw=100)
+    elif args.env == 'ant_v5':
+        from envs.ant_v5_env import AntV5Env
+        env = AntV5Env(seed=args.seed)
     elif args.env.startswith('dmc'):
         from envs.custom_dmc_tasks import dmc
         from envs.custom_dmc_tasks.pixel_wrappers import RenderWrapper

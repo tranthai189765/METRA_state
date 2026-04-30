@@ -52,6 +52,12 @@ python tests/main.py --run_group Debug --env dmc_humanoid_state --max_path_lengt
 # METRA on pixel-based Kitchen (24 skills)
 python tests/main.py --run_group Debug --env kitchen --max_path_length 50 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --num_video_repeats 1 --frame_stack 3 --sac_max_buffer_size 100000 --algo metra --sac_lr_a -1 --trans_optimization_epochs 100 --n_epochs_per_log 25 --n_epochs_per_eval 250 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 1 --dim_option 24 --encoder 1 --sample_cpu 0
 
+# METRA on Ant-v5 gymnasium (2-D skills)
+python tests/main.py --run_group Debug --env ant_v5 --max_path_length 200 --seed 0 --traj_batch_size 8 --n_parallel 1 --normalizer_type off --eval_plot_axis -50 50 -50 50 --trans_optimization_epochs 50 --n_epochs_per_log 100 --n_epochs_per_eval 1000 --n_epochs_per_save 10000 --sac_max_buffer_size 1000000 --algo metra --discrete 0 --dim_option 2
+
+# RSD on Ant-v5 gymnasium (2-D skills)
+python tests/main.py --run_group Debug --env ant_v5 --max_path_length 200 --seed 0 --traj_batch_size 8 --n_parallel 1 --normalizer_type off --eval_plot_axis -50 50 -50 50 --trans_optimization_epochs 50 --n_epochs_per_log 100 --n_epochs_per_eval 1000 --n_epochs_per_save 10000 --sac_max_buffer_size 1000000 --algo rsd --explore_type SZN --phi_type baseline --policy_type baseline --discrete 0 --dim_option 2
+
 # METRA on AntMaze-UMaze (2-D skills) — obs_type=states, action_repeat=1, matches TIME/DUSDi default
 python tests/main.py --run_group Debug --env antmaze_umaze --max_path_length 700 --seed 0 --traj_batch_size 8 --n_parallel 4 --normalizer_type off --sac_max_buffer_size 1000000 --algo metra --trans_optimization_epochs 200 --n_epochs_per_log 25 --n_epochs_per_eval 125 --n_epochs_per_save 1000 --n_epochs_per_pt_save 1000 --discrete 0 --dim_option 2 --encoder 0
 
