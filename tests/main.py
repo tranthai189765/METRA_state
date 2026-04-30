@@ -68,7 +68,7 @@ def get_argparser():
 
     parser.add_argument('--env', type=str, default='maze', choices=[
         'maze', 'half_cheetah', 'ant', 'dmc_cheetah', 'dmc_quadruped', 'dmc_humanoid',
-        'dmc_humanoid_state', 'dmc_quadruped_state', 'kitchen',
+        'dmc_humanoid_state', 'dmc_quadruped_state', 'dmc_hopper_state', 'kitchen',
     ])
     parser.add_argument('--frame_stack', type=int, default=None)
 
@@ -254,6 +254,9 @@ def make_env(args, max_path_length):
             env = dmc.make('humanoid_run', obs_type='states', frame_stack=1, action_repeat=1, seed=args.seed)
         elif args.env == 'dmc_quadruped_state':
             env = dmc.make('quadruped_run_forward', obs_type='states', frame_stack=1, action_repeat=1, seed=args.seed)
+        elif args.env == 'dmc_hopper_state':
+            # hopper_hop: obs_type=states, action_repeat=1 — matches TIME pretrain default config
+            env = dmc.make('hopper_hop', obs_type='states', frame_stack=1, action_repeat=1, seed=args.seed)
         else:
             assert args.encoder  # Only support pixel-based environments
             if args.env == 'dmc_cheetah':

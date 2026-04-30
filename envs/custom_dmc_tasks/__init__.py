@@ -1,6 +1,7 @@
 from envs.custom_dmc_tasks import cheetah
 from envs.custom_dmc_tasks import quadruped
 from envs.custom_dmc_tasks import humanoid
+from envs.custom_dmc_tasks import hopper
 
 
 def make(domain, task,
@@ -22,5 +23,10 @@ def make(domain, task,
                              task_kwargs=task_kwargs,
                              environment_kwargs=environment_kwargs,
                              visualize_reward=visualize_reward)
+    elif domain == 'hopper':
+        return hopper.make(task,
+                           task_kwargs=task_kwargs,
+                           environment_kwargs=environment_kwargs,
+                           visualize_reward=visualize_reward)
     else:
         raise NotImplementedError
