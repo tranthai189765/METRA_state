@@ -49,15 +49,16 @@ assert dowel_wrapper is not None
 # ---------------------------------------------------------------------------
 
 def load_checkpoint(path: str):
-    """Load a cloudpickle checkpoint, handling numpy RandomState version mismatch."""
-    import sys
-    import numpy as np
+    """Load a cloudpickle checkpoint, handling numpy RandomState version mismatch.
 
-    # numpy serializes RandomState via numpy.random.mtrand.__randomstate_ctor
-    # (the function's __module__ is 'numpy.random.mtrand', not 'numpy.random').
-    # Patch every possible location pickle might look up.
-    import importlib
-    _targets = ['numpy.random', 'numpy.random.mtrand']
+    The pickle file may have been saved with a numpy version where RandomState
+    serialises via numpy.random.mtrand.__randomstate_ctor with 2 positional args,
+    while the installed numpy only accepts 0-1.  We intercept that name in a
+    custom Unpickler (checking 'numpy' in module to catch both numpy.random and
+    numpy.random.mtrand) and replace it with a version-agnostic constructor.
+    """
+    import pickle
+    import numpy as np
 
     def _compat_ctor(*args):
         rs = np.random.RandomState()
@@ -72,23 +73,14 @@ def load_checkpoint(path: str):
                 pass
         return rs
 
-    originals = {}
-    for mod_name in _targets:
-        mod = importlib.import_module(mod_name)
-        originals[mod_name] = getattr(mod, '__randomstate_ctor', None)
-        mod.__randomstate_ctor = _compat_ctor
+    class _CompatUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            if name == '__randomstate_ctor' and 'numpy' in module:
+                return _compat_ctor
+            return super().find_class(module, name)
 
-    try:
-        import cloudpickle
-        with open(path, 'rb') as f:
-            return cloudpickle.load(f)
-    finally:
-        for mod_name, orig in originals.items():
-            mod = sys.modules[mod_name]
-            if orig is not None:
-                mod.__randomstate_ctor = orig
-            else:
-                mod.__dict__.pop('__randomstate_ctor', None)
+    with open(path, 'rb') as f:
+        return _CompatUnpickler(f).load()
 
 
 def make_env(env_name: str, seed: int = 0):
