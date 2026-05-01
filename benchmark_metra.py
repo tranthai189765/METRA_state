@@ -55,9 +55,21 @@ def load_checkpoint(path: str):
         return cloudpickle.load(f)
 
 
-def make_env(seed: int = 0):
-    from envs.ant_v5_env import AntV5Env
-    return AntV5Env(seed=seed)
+def make_env(env_name: str, seed: int = 0):
+    if env_name == 'ant_v5':
+        from envs.ant_v5_env import AntV5Env
+        return AntV5Env(seed=seed)
+    elif env_name == 'ant':
+        from envs.mujoco.ant_env import AntEnv
+        return AntEnv(render_hw=100)
+    elif env_name == 'half_cheetah':
+        from envs.mujoco.half_cheetah_env import HalfCheetahEnv
+        return HalfCheetahEnv(render_hw=100)
+    elif env_name.startswith('antmaze'):
+        from envs.antmaze_env import AntMazeEnv
+        return AntMazeEnv(env_name, seed=seed)
+    else:
+        raise ValueError(f"Unsupported env: {env_name}. Choices: ant, ant_v5, half_cheetah, antmaze_*")
 
 
 def generate_options(dim_option: int, n_skills: int, discrete: bool, unit_length: bool) -> np.ndarray:
@@ -205,10 +217,15 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 def parse_args():
-    p = argparse.ArgumentParser(description='Benchmark METRA checkpoint on Ant-v5')
+    p = argparse.ArgumentParser(description='Benchmark a METRA checkpoint')
     p.add_argument('--checkpoint', type=str,
                    default='exp/Debug/sd001_1777556593_ant_v5_metra/itr_9000.pkl',
                    help='Path to itr_*.pkl checkpoint')
+    p.add_argument('--env', type=str, default=None,
+                   choices=['ant', 'ant_v5', 'half_cheetah',
+                            'antmaze_umaze', 'antmaze_medium_play', 'antmaze_medium_diverse',
+                            'antmaze_large_play', 'antmaze_large_diverse'],
+                   help='Environment to evaluate on. Default: auto-detect from checkpoint.')
     p.add_argument('--n_skills', type=int, default=16,
                    help='Number of distinct skills to evaluate')
     p.add_argument('--n_eps', type=int, default=3,
@@ -251,12 +268,14 @@ def main():
     policy.eval()
     traj_encoder.eval()
 
+    # auto-detect env name from checkpoint if not provided
+    env_name = args.env or getattr(algo, 'env_name', 'ant_v5')
     print(f"      dim_option={dim_option}  discrete={discrete}  unit_length={unit_length}")
-    print(f"      device: {device}")
+    print(f"      device: {device}  env: {env_name}")
 
     # ---- env ----
-    print("[2/5] Creating Ant-v5 environment …")
-    env = make_env(seed=args.seed)
+    print(f"[2/5] Creating environment '{env_name}' …")
+    env = make_env(env_name, seed=args.seed)
 
     # ---- skills ----
     print(f"[3/5] Generating {args.n_skills} skills …")
