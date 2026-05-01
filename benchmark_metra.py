@@ -109,7 +109,7 @@ def rollout_skill(policy, env, option: np.ndarray, max_steps: int, deterministic
     return xs, ys, total_return, obs_list
 
 
-def compute_coverage_score(all_xy: list[tuple[float, float]], bin_size: float = 1.0) -> float:
+def compute_coverage_score(all_xy, bin_size: float = 1.0) -> float:
     """Number of unique grid bins visited across all skills."""
     bins = set()
     for x, y in all_xy:
