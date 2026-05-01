@@ -50,41 +50,45 @@ assert dowel_wrapper is not None
 
 def load_checkpoint(path: str):
     """Load a cloudpickle checkpoint, handling numpy RandomState version mismatch."""
-    import pickle
+    import sys
     import numpy as np
-    import numpy.random as npr
 
-    # Patch numpy's __randomstate_ctor directly in the module namespace so pickle
-    # finds the wrapper regardless of which unpickle protocol is used.
-    _orig_ctor = getattr(npr, '__randomstate_ctor', None)
+    # numpy serializes RandomState via numpy.random.mtrand.__randomstate_ctor
+    # (the function's __module__ is 'numpy.random.mtrand', not 'numpy.random').
+    # Patch every possible location pickle might look up.
+    import importlib
+    _targets = ['numpy.random', 'numpy.random.mtrand']
 
     def _compat_ctor(*args):
-        rs = npr.RandomState()
+        rs = np.random.RandomState()
         if args:
             try:
-                state = args[0]
-                if isinstance(state, dict):
-                    rs.__setstate__(state)
-                elif isinstance(state, tuple):
-                    rs.set_state(state)
+                s = args[0]
+                if isinstance(s, dict):
+                    rs.__setstate__(s)
+                elif isinstance(s, tuple):
+                    rs.set_state(s)
             except Exception:
                 pass
         return rs
 
-    npr.__randomstate_ctor = _compat_ctor
+    originals = {}
+    for mod_name in _targets:
+        mod = importlib.import_module(mod_name)
+        originals[mod_name] = getattr(mod, '__randomstate_ctor', None)
+        mod.__randomstate_ctor = _compat_ctor
+
     try:
+        import cloudpickle
         with open(path, 'rb') as f:
-            import cloudpickle
             return cloudpickle.load(f)
     finally:
-        # restore original
-        if _orig_ctor is not None:
-            npr.__randomstate_ctor = _orig_ctor
-        else:
-            try:
-                delattr(npr, '__randomstate_ctor')
-            except AttributeError:
-                pass
+        for mod_name, orig in originals.items():
+            mod = sys.modules[mod_name]
+            if orig is not None:
+                mod.__randomstate_ctor = orig
+            else:
+                mod.__dict__.pop('__randomstate_ctor', None)
 
 
 def make_env(env_name: str, seed: int = 0):
