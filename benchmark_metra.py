@@ -52,23 +52,39 @@ def load_checkpoint(path: str):
     """Load a cloudpickle checkpoint, handling numpy RandomState version mismatch."""
     import pickle
     import numpy as np
+    import numpy.random as npr
 
-    class _NumpyCompatUnpickler(pickle.Unpickler):
-        def find_class(self, module, name):
-            # numpy >= 1.17 changed __randomstate_ctor signature;
-            # wrap it so extra positional args are silently dropped.
-            if module == 'numpy.random' and name == '__randomstate_ctor':
-                return lambda *_args: np.random.RandomState()
-            return super().find_class(module, name)
+    # Patch numpy's __randomstate_ctor directly in the module namespace so pickle
+    # finds the wrapper regardless of which unpickle protocol is used.
+    _orig_ctor = getattr(npr, '__randomstate_ctor', None)
 
-    with open(path, 'rb') as f:
-        try:
-            return _NumpyCompatUnpickler(f).load()
-        except Exception:
-            # fallback: try plain cloudpickle (works when versions match)
-            f.seek(0)
+    def _compat_ctor(*args):
+        rs = npr.RandomState()
+        if args:
+            try:
+                state = args[0]
+                if isinstance(state, dict):
+                    rs.__setstate__(state)
+                elif isinstance(state, tuple):
+                    rs.set_state(state)
+            except Exception:
+                pass
+        return rs
+
+    npr.__randomstate_ctor = _compat_ctor
+    try:
+        with open(path, 'rb') as f:
             import cloudpickle
             return cloudpickle.load(f)
+    finally:
+        # restore original
+        if _orig_ctor is not None:
+            npr.__randomstate_ctor = _orig_ctor
+        else:
+            try:
+                delattr(npr, '__randomstate_ctor')
+            except AttributeError:
+                pass
 
 
 def make_env(env_name: str, seed: int = 0):
