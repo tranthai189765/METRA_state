@@ -187,6 +187,18 @@ except ImportError:
             plt.close(fig)
             return float(np.mean(sim))
 
+        def save_metrics(self, file='metrics.pkl'):
+            import pickle
+            with open(file, 'wb') as f:
+                pickle.dump({'locs': self._locs, 'returns': self._returns}, f)
+
+        def load_metrics(self, file='metrics.pkl'):
+            import pickle
+            with open(file, 'rb') as f:
+                data = pickle.load(f)
+            self._locs    = data.get('locs', {})
+            self._returns = data.get('returns', [])
+
 
 # ---------------------------------------------------------------------------
 # Main
