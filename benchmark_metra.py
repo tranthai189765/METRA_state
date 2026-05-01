@@ -39,6 +39,10 @@ for p in [METRA_PATH, TIME_PATH]:
 
 os.environ.setdefault('MUJOCO_GL', 'egl')
 
+# dowel_wrapper MUST be imported before dowel (and before cloudpickle.load triggers garage imports)
+import dowel_wrapper  # noqa: E402  (intentional late import after sys.path setup)
+assert dowel_wrapper is not None
+
 
 # ---------------------------------------------------------------------------
 # Helpers
