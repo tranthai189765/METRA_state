@@ -49,10 +49,26 @@ assert dowel_wrapper is not None
 # ---------------------------------------------------------------------------
 
 def load_checkpoint(path: str):
-    """Load a cloudpickle checkpoint and return the saved dict."""
-    import cloudpickle
+    """Load a cloudpickle checkpoint, handling numpy RandomState version mismatch."""
+    import pickle
+    import numpy as np
+
+    class _NumpyCompatUnpickler(pickle.Unpickler):
+        def find_class(self, module, name):
+            # numpy >= 1.17 changed __randomstate_ctor signature;
+            # wrap it so extra positional args are silently dropped.
+            if module == 'numpy.random' and name == '__randomstate_ctor':
+                return lambda *_args: np.random.RandomState()
+            return super().find_class(module, name)
+
     with open(path, 'rb') as f:
-        return cloudpickle.load(f)
+        try:
+            return _NumpyCompatUnpickler(f).load()
+        except Exception:
+            # fallback: try plain cloudpickle (works when versions match)
+            f.seek(0)
+            import cloudpickle
+            return cloudpickle.load(f)
 
 
 def make_env(env_name: str, seed: int = 0):
