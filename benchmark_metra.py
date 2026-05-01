@@ -256,11 +256,12 @@ def main():
     metrics = Metrics()
     algo_name = 'METRA_ant_v5'
 
-    all_xy           = []
-    last_obs_per_skill = []    # one representative obs per skill for confusion matrix
+    all_xy              = []
+    last_obs_per_skill  = []    # one representative obs per skill for confusion matrix
+    skill_locs          = {}    # si -> list of (x, y)  — local copy for scatter plot
 
     for si, option in enumerate(options):
-        skill_id  = si
+        skill_locs[si] = []
         skill_rets = []
 
         ep_xs_all, ep_ys_all = [], []
@@ -275,8 +276,9 @@ def main():
             skill_rets.append(ret)
             metrics.save_return(algo_name, ret)
             for x, y in zip(xs, ys):
-                metrics.save_ant_location(algo_name, skill_id, x, y)
+                metrics.save_ant_location(algo_name, si, x, y)
                 all_xy.append((x, y))
+                skill_locs[si].append((x, y))
             ep_xs_all.extend(xs)
             ep_ys_all.extend(ys)
             if obs_list:
@@ -331,8 +333,8 @@ def main():
     # Summary scatter plot: all trajectories coloured by skill
     fig, ax = plt.subplots(figsize=(8, 8))
     cmap = plt.cm.get_cmap('tab20', args.n_skills)
-    for si, option in enumerate(options):
-        locs = metrics.metrics[algo_name]['ant_location_metrics'].get(si, [])
+    for si in range(len(options)):
+        locs = skill_locs.get(si, [])
         if not locs:
             continue
         xs, ys = zip(*locs)
