@@ -118,3 +118,100 @@ pip install gymnasium-robotics
 ```
 
 **Supported variants:** `antmaze_umaze`, `antmaze_medium_play`, `antmaze_medium_diverse`, `antmaze_large_play`, `antmaze_large_diverse`
+
+---
+
+## HRL Downstream Training (`train_hrl.py`)
+
+Load a pretrained METRA **discrete-skill** checkpoint and train a high-level PPO policy
+on a downstream dm_control task. The low-level METRA policy is frozen; only the
+high-level skill selector is trained.
+
+### Architecture
+
+```
+High-level PPO  →  skill index (0 … dim_option-1)
+                       ↓  one-hot encoding
+Low-level METRA PolicyEx  →  primitive actions  (frozen)
+                       ↓  low_level_steps steps
+Environment  →  accumulated reward + next obs
+```
+
+### Prerequisites
+
+```bash
+pip install stable-baselines3
+```
+
+### Run command
+
+```bash
+# METRA discrete (16 skills) → cheetah_run downstream
+python train_hrl.py \
+    --exp_dir /workspace/METRA_state/exp/Debug/sd001_1777660191_dmc_cheetah_state_metra \
+    --env dmc_cheetah_state \
+    --ds_task cheetah_run \
+    --dim_option 16 \
+    --low_level_steps 50 \
+    --n_env 8 \
+    --n_steps 256 \
+    --total_timesteps 50000000 \
+    --seed 1 \
+    --use_tb \
+    --out_dir ./hrl_results/metra_cheetah_run
+```
+
+### Key arguments
+
+| Argument | Default | Description |
+|---|---|---|
+| `--exp_dir` | required | METRA experiment directory containing `option_policy*.pt` |
+| `--epoch` | auto (latest) | Checkpoint epoch to load |
+| `--env` | `dmc_cheetah_state` | Pretraining environment |
+| `--ds_task` | `cheetah_run` | Downstream task (see table below) |
+| `--dim_option` | `16` | Number of discrete skills (must match checkpoint) |
+| `--low_level_steps` | `50` | Low-level steps per high-level skill selection |
+| `--n_env` | `8` | Number of parallel envs (`1` = no subprocess, easier to debug) |
+| `--n_steps` | `256` | PPO rollout steps per env per update |
+| `--total_timesteps` | `50000000` | Total training timesteps |
+| `--use_tb` | off | Enable TensorBoard logging in `--out_dir` |
+
+### Supported downstream tasks
+
+| `--env` | `--ds_task` | dm_control task |
+|---|---|---|
+| `dmc_cheetah_state` | `cheetah_run` | `cheetah_run_forward` |
+| `dmc_quadruped_state` | `quadruped_walk` | `quadruped_walk` |
+| `dmc_quadruped_state` | `quadruped_run` | `quadruped_run` |
+| `dmc_humanoid_state` | `humanoid_run` | `humanoid_run` |
+| `dmc_hopper_state` | `hopper_hop` | `hopper_hop` |
+
+### Debug single-process (show full traceback)
+
+```bash
+python train_hrl.py \
+    --exp_dir /workspace/METRA_state/exp/Debug/sd001_1777660191_dmc_cheetah_state_metra \
+    --env dmc_cheetah_state --ds_task cheetah_run \
+    --dim_option 16 --low_level_steps 50 \
+    --n_env 1 --n_steps 256 --total_timesteps 50000000 \
+    --seed 1 --use_tb --out_dir ./hrl_results/debug
+```
+
+### Benchmark scripts
+
+Evaluate skill diversity **without** downstream training:
+
+```bash
+# Discrete skills (16 one-hot skills)
+python benchmark_metra_cheetah_discrete.py \
+    --exp_dir /workspace/METRA_state/exp/Debug/sd001_1777660191_dmc_cheetah_state_metra \
+    --n_episodes 1 --episode_steps 1000 \
+    --out_dir ./benchmark_results_metra_cheetah_discrete
+
+# Continuous skills (dim=2, 16 points on unit circle)
+python benchmark_metra_cheetah_continuous.py \
+    --exp_dir /workspace/METRA_state/exp/Debug/sd001_1777556890_dmc_cheetah_state_metra \
+    --dim_option 2 --n_skills 16 \
+    --n_episodes 1 --episode_steps 1000 \
+    --out_dir ./benchmark_results_metra_cheetah_continuous
+```
